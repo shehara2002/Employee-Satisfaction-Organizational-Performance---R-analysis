@@ -1,0 +1,62 @@
+library(dplyr)
+library(ggplot2)
+
+# ️Multiple Linear regression model
+#Split data
+set.seed(123)    #Every time run the code, get the same train-test split
+
+train_index <- sample(1:nrow(hr), 0.7 * nrow(hr))
+
+train_data <- hr[train_index, ]   #build the model
+test_data  <- hr[-train_index, ]   #evaluate model performance
+
+#Train model
+perf_model <- lm(PerfRat_num ~ JobSat_num + EnvSat_num + WLB_num + JobInv_num + RelSat_num,
+                 data = train_data)
+
+#Predict (ONLY after model is created)
+test_data$Predicted_Perf <- predict(perf_model, newdata = test_data)
+
+hr$Predicted_Perf <- predict(perf_model, newdata = hr)
+
+#  Calculate metrics
+
+# RMSE (Root Mean Squared Error) 
+#Measures average prediction error (with more penalty on large errors)
+rmse <- sqrt(mean((test_data$PerfRat_num - test_data$Predicted_Perf)^2))
+
+# MAE (Mean Absolute Error)
+#Measures average absolute error
+mae  <- mean(abs(test_data$PerfRat_num - test_data$Predicted_Perf))
+
+# R-squared
+#Measures how much variation in the dependent variable is explained by the model
+r2   <- summary(perf_model)$r.squared
+
+# Print metrics
+cat("RMSE:", round(rmse, 4), "\n")    #RMSE:  0.3522 
+cat("MAE:", round(mae, 4), "\n")      #MAE: 0.1578 
+cat("R-squared:", round(r2, 4), "\n")  #R-squared:0.9022  
+
+#  Visualization: Predicted vs Actual
+ggplot(hr, aes(x = Predicted_Perf, y = PerfRat_num)) +
+  geom_point(size = 2, alpha = 0.6, color = "darkgreen") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "blue") +
+  labs(
+    title = "Linear Regression: Predicted vs Actual Performance Rating",
+    x = "Predicted Performance Rating",
+    y = "Actual Performance Rating"
+  ) +
+  theme_minimal()
+
+
+#Round predictions to nearest integer:
+  hr$Predicted_Rounded <- round(hr$Predicted_Perf)
+#Compare to actual values:
+  accuracy <- mean(hr$Predicted_Rounded == hr$PerfRat_num)
+accuracy    
+# 0.8789116
+
+#The regression model shows a very low R² (0.0027), indicating that employee satisfaction variables explain almost none of the variation in performance. 
+#A rounded prediction “accuracy” of 87.89% was observed, but this is not a standard metric for regression. 
+#Overall, satisfaction variables do not significantly predict employee performance.
